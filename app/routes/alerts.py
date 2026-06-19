@@ -57,3 +57,15 @@ async def investigate(service_name: str):
         "finding": finding
     }
 
+@router.get("/events/{service_name}")
+async def get_events(service_name: str):
+
+    events = investigation_service.get_pod_events(
+        service_name
+    )
+
+    return {
+        "service": service_name,
+        **events
+    }
+
