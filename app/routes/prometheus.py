@@ -2,6 +2,10 @@ from fastapi import APIRouter
 from fastapi import Query 
 from datetime import datetime
 
+from app.services.metrics_service import (
+    MetricService
+)
+
 
 from app.monitoring.prometheus_service import(
     PrometheusService
@@ -20,6 +24,8 @@ prometheus_service = (
         )
     )
 )
+
+
 
 @router.get("/prometheus/query")
 async def query_prometheus(promql: str = Query(...)):

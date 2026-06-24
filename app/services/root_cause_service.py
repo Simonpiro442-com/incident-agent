@@ -15,7 +15,7 @@ class RootCauseServices:
 
         best_match = max(
             correlations,
-            key=lambda item: item["confidence"]
+            key=lambda x: x["confidence"]
         )
 
         return {

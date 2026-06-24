@@ -9,7 +9,26 @@ from app.services.root_cause_service import RootCauseServices
 from app.services.correlation_service import (
     CorrelationService
 )
+from app.monitoring.prometheus_service import(
+    PrometheusService
+)
 
+
+from app.services.metrics_service import (
+    MetricService
+)
+
+prometheus_service = (
+    PrometheusService(
+        base_url="http://localhost:9090"
+    )
+)
+
+metrics_service = (
+    MetricService(
+        prometheus_service
+    )
+)
 router = APIRouter()
 incident_service = IncidentService()
 investigation_service = InvestigationService()
@@ -62,12 +81,31 @@ async def investigate(namespace: str, service_name: str):
         )
     )
 
+    metrics = {
+        **metrics_service.get_pod_count(
+            namespace
+        ),
+
+        **metrics_service.get_memory_usage(
+            namespace
+        ),
+
+        **metrics_service.get_cpu_usage(
+            namespace
+        ),
+
+        **metrics_service.get_network_usage(
+            namespace
+        )
+    }
+
     correlations = (
         correlation_service.correlate(
             pod_data=pod_data,
             deployment_data=deployment_data,
             event_data=event_data,
-            resource_analysis=resource_analysis
+            resource_analysis=resource_analysis, 
+            metrics=metrics
         )
     )
 
@@ -82,6 +120,7 @@ async def investigate(namespace: str, service_name: str):
         **pod_data,
         **deployment_data,
         **event_data, 
+        "metrics": metrics,
         "resource_analysis":resource_analysis,
         "analysis": root_cause
 
