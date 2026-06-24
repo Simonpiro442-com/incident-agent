@@ -4,6 +4,9 @@ from app.db.database import engine
 from app.db.models import Incident
 from app.db.database import Base 
 from app.db.database import engine
+from app.routes.prometheus import (
+    router as prometheus_router
+)
 
 Base.metadata.create_all(bind=engine)
 
@@ -14,3 +17,4 @@ app = FastAPI(
 )
 
 app.include_router(alerts_router)
+app.include_router(prometheus_router)

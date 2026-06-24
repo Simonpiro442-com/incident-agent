@@ -5,10 +5,16 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 from app.db.dependencies import get_db
 from app.kubernetes.investigation_service import InvestigationService
+from app.services.root_cause_service import RootCauseServices
+from app.services.correlation_service import (
+    CorrelationService
+)
 
 router = APIRouter()
 incident_service = IncidentService()
 investigation_service = InvestigationService()
+root_cause_service = RootCauseServices()
+correlation_service = CorrelationService()
 
 @router.post("/alerts")
 async def receive_alert(payload: AlertPayload, db: Session = Depends(get_db)):
@@ -27,45 +33,57 @@ async def health_check():
 # @router.get("/incidents")
 
 
-@router.get("/investigate/{service_name}")
-async def investigate(service_name: str):
+@router.get("/investigate/{namespace}/{service_name}")
+async def investigate(namespace: str, service_name: str):
     pod_data = (
         investigation_service.get_service_pods(
+            namespace,
             service_name
         )
     )
     deployment_data = (
         investigation_service.get_recent_deployment(
+            namespace,
             service_name
         )
     )
 
-    finding = None
-
-    if (
-        deployment_data.get("deployment_found")
-        and deployment_data.get("deployment_age_minutes", 999) < 30
-        and pod_data["total_restarts"] > 5
-    ):
-        finding = (
-            "Recent deployment correlates with increased pod restarts"
+    event_data = (
+        investigation_service.get_pod_events(
+            namespace,
+            service_name
         )
-    return {
-        "service": service_name,
-        **pod_data,
-        **deployment_data,
-        "finding": finding
-    }
+    )
 
-@router.get("/events/{service_name}")
-async def get_events(service_name: str):
+    resource_analysis = (
+        investigation_service.analyze_pod_resources(
+            namespace,
+            service_name
+        )
+    )
 
-    events = investigation_service.get_pod_events(
-        service_name
+    correlations = (
+        correlation_service.correlate(
+            pod_data=pod_data,
+            deployment_data=deployment_data,
+            event_data=event_data,
+            resource_analysis=resource_analysis
+        )
+    )
+
+    root_cause = (
+        root_cause_service.analyze(
+            correlations
+        )
     )
 
     return {
         "service": service_name,
-        **events
+        **pod_data,
+        **deployment_data,
+        **event_data, 
+        "resource_analysis":resource_analysis,
+        "analysis": root_cause
+
     }
 

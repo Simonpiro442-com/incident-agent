@@ -1,12 +1,13 @@
 from app.kubernetes.client import get_k8s_client
 
 class InvestigationService:
-    def get_service_pods(self, service_name: str):
+    def get_service_pods(self,namespace: str, service_name: str):
 
         clients = get_k8s_client()
         v1 = clients["core"]
 
-        pods = v1.list_pod_for_all_namespaces(
+        pods = v1.list_namespaced_pod(
+            namespace=namespace,
             label_selector=f"app={service_name}"
         )
 
@@ -29,7 +30,7 @@ class InvestigationService:
                     "restarts": restart_count
                 }
             )
-            
+
         total_restarts = sum(
             pod["restarts"]
             for pod in matching_pods
@@ -48,12 +49,13 @@ class InvestigationService:
                 "restart_severity": restart_severity
             }
         
-    def get_recent_deployment(self, service_name: str):
+    def get_recent_deployment(self,namespace:str, service_name: str):
         clients = get_k8s_client()
         apps = clients["apps"]
 
         deployments = (
-            apps.list_deployment_for_all_namespaces(
+            apps.list_namespaced_deployment(
+                namespace=namespace,
                 label_selector=f"app={service_name}"
             )
         )
@@ -115,7 +117,8 @@ class InvestigationService:
         label_selector = self.get_label_selector(
             service_name
         )
-        pods = v1.list_pod_for_all_namespaces(
+        pods = v1.list_namespaced_pod(
+            namespace=namespace,
             label_selector=label_selector
         )
         deployments = (
@@ -124,15 +127,16 @@ class InvestigationService:
         )
     )
 
-    def get_pod_events(self, service_name:str):
+    def get_pod_events(self,namespace: str, service_name:str):
 
         clients = get_k8s_client()
         v1 = clients["core"]
 
         label_selector = f"app={service_name}"
 
-        pods = v1.list_pod_for_all_namespaces(
-            label_selector = label_selector
+        pods = v1.list_namespaced_pod(
+            namespace=namespace,
+            label_selector=label_selector
         )
         
         critical_reasons = {
@@ -168,6 +172,89 @@ class InvestigationService:
             "events": collected_events, 
             "event_severity": event_severity
         }
+
+    def analyze_pod_resources(self,namespace: str, service_name: str):
+        label_selector = f"app={service_name}"
+        clients = get_k8s_client()
+        v1 = clients["core"]
+
+        pods = v1.list_namespaced_pod(
+            namespace=namespace,
+            label_selector=label_selector
+        )
+        results = []
+
+        for pod in pods.items:
+            pod_info = {
+                "name": pod.metadata.name, 
+
+                "namespace": (
+                    pod.metadata.namespace
+                ), 
+
+                "phase": (
+                    pod.status.phase
+                    ),
+
+                "node": (
+                    pod.spec.node_name
+                ), 
+                
+                "pod_ip": (
+                    pod.status.pod_ip
+                ),
+
+                "start_time": (
+                    pod.status.start_time.isoformat()
+                    if pod.status.start_time
+                    else None
+                )
+            }
+
+            if pod.status.container_statuses: 
+                container = (
+                    pod.status.container_statuses[0]
+                )
+
+                if container.state.running:
+                    pod_info["container_state"] = "running"
+                elif container.state.waiting:
+                    pod_info["container_state"] = "waiting"
+                    pod_info["waiting_reason"] = (container.state.waiting.reason)
+                elif container.state.terminated:
+                    pod_info["container_state"] = "terminated"
+                    pod_info["termination_reason"] = (container.state.terminated.reason)
+
+                if (container.last_state and container.last_state.terminated):
+                    pod_info["last_termination_reason"] = (
+                        container
+                        .last_state
+                        .terminated
+                        .reason
+                    )
+                    pod_info["exit_code"] = (
+                        container
+                        .last_state
+                        .terminated
+                        .exit_code
+                    )
+            container_spec = (
+                pod.spec.containers[0]
+            )
+            resources = (
+                container_spec.resources
+            )
+            pod_info["requests"] = (
+                resources.requests or {}
+            )
+            pod_info["limits"] = (
+                resources.limits or {}
+            )
+            results.append(
+                pod_info
+            )
+        return results
+
 
                 
                 
