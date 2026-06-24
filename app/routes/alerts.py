@@ -122,6 +122,7 @@ async def investigate(namespace: str, service_name: str):
         **event_data, 
         "metrics": metrics,
         "resource_analysis":resource_analysis,
+        "correlations": correlations,
         "analysis": root_cause
 
     }

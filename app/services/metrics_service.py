@@ -7,7 +7,7 @@ class MetricService:
         self.prometheus = (prometheus_service)
     
     def get_pod_count(self, namespace: str):
-        promql = (f'kube_pod_info{{namespace="namespace"}}')
+        promql = (f'kube_pod_info{{namespace="{namespace}"}}')
         result = (self.prometheus.query_instant(promql))
         pod_count = len(result["data"]["result"])
         return {

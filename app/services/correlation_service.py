@@ -153,6 +153,100 @@ class CorrelationService:
                     }
                 )
 
+            # Previous container Failure
+
+            if (
+                pod.get(
+                    "last_termination_reason"
+                )
+                == "Error"
+            ): 
+                findings.append(
+                    {
+                        "severity": "warning", 
+                        "confidence": 0.70, 
+                        "finding": (
+                            "container previously terminated with an error"
+                        )
+                    }
+                )
+            
+            #Error + Restart Activity
+            
+            if (
+                pod.get(
+                    "last_termination_reason"
+                )
+                == "Error"
+                and total_restarts >= 5
+            ):
+               findings.append(
+                  {
+                    "severity": "high", 
+                    "confidence": 0.85, 
+                    "finding": (
+                        "Repeated container failure detected"
+                    )
+                  }
+               )
+            
+            #Non-zero exit code
+            exit_code = (
+                pod.get(
+                    "exit_code"
+                )
+            )
+            if (
+                exit_code is not None
+                and exit_code != 0
+            ): 
+               findings.append(
+                  {
+                    "severity": "warning", 
+                    "confidence": 0.75, 
+                    "finding": (
+                        f"Container exited with code {exit_code}"
+                    )
+                  }
+               )
+            
+            #Exit code 255
+
+            if (
+                pod.get(
+                    "exit_code"
+                )
+                == 255
+            ): 
+               findings.append(
+                  {
+                    "severity": "high", 
+                    "confidence": 0.90, 
+                    "findings": (
+                        "Application terminated with exit code 255"
+                    )
+                  }
+               )
+
+            #Exit code 255 + Restarts
+            if (
+                pod.get(
+                    "exit_code"
+                )
+                == 255
+                and total_restarts >= 5
+            ): 
+               findings.append(
+                 {
+                    "severity": "critical", 
+                    "confidence": 0.95, 
+                    "findings": (
+                        "Application repeatedly terminated with exit code 255"
+                    )
+                 }
+               )
+
+
         #
         # Rule 6
         # High memory + OOMKilled
