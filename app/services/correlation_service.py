@@ -222,7 +222,7 @@ class CorrelationService:
                   {
                     "severity": "high", 
                     "confidence": 0.90, 
-                    "findings": (
+                    "finding": (
                         "Application terminated with exit code 255"
                     )
                   }
@@ -240,7 +240,7 @@ class CorrelationService:
                  {
                     "severity": "critical", 
                     "confidence": 0.95, 
-                    "findings": (
+                    "finding": (
                         "Application repeatedly terminated with exit code 255"
                     )
                  }

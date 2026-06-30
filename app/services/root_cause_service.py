@@ -20,7 +20,7 @@ class RootCauseServices:
 
         return {
             "root_cause":
-                best_match["findings"],
+                best_match["finding"],
 
             "severity":
                 best_match["severity"],

@@ -18,6 +18,10 @@ from app.services.metrics_service import (
     MetricService
 )
 
+from app.services.summary_service import (
+    SummaryService
+)
+
 prometheus_service = (
     PrometheusService(
         base_url="http://localhost:9090"
@@ -29,11 +33,13 @@ metrics_service = (
         prometheus_service
     )
 )
+
 router = APIRouter()
 incident_service = IncidentService()
 investigation_service = InvestigationService()
 root_cause_service = RootCauseServices()
 correlation_service = CorrelationService()
+summary_service = SummaryService()
 
 @router.post("/alerts")
 async def receive_alert(payload: AlertPayload, db: Session = Depends(get_db)):
@@ -115,6 +121,19 @@ async def investigate(namespace: str, service_name: str):
         )
     )
 
+    incident_summary = (
+        summary_service.generate(
+            service_name=service_name, 
+            pod_data=pod_data, 
+            metrics=metrics, 
+            correlations=correlations, 
+            root_cause=root_cause
+        )
+
+    )
+
+
+
     return {
         "service": service_name,
         **pod_data,
@@ -123,7 +142,8 @@ async def investigate(namespace: str, service_name: str):
         "metrics": metrics,
         "resource_analysis":resource_analysis,
         "correlations": correlations,
-        "analysis": root_cause
+        "analysis": root_cause, 
+        "incident_summary": incident_summary
 
     }
 
